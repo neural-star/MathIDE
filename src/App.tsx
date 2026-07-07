@@ -641,14 +641,14 @@ function App() {
           </div>
           <div className="toolbar-actions-right">
             <div className="toolbar-actions-row">
-              <button className="secondary-button hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+              <button className="secondary-button hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar">☰</button>
               <button type="button" className="secondary-button" onClick={() => addCell('top')}>
                 ＋ Add top
               </button>
               <button type="button" className="secondary-button" onClick={() => addCell('bottom')}>
                 ＋ Add bottom
               </button>
-              <button type="button" className="secondary-button" onClick={() => setShowSettings(true)}>⚙︎</button>
+              <button type="button" className="secondary-button" onClick={() => setShowSettings(true)} aria-label="Open settings">⚙︎</button>
               <button type="button" className="secondary-button" onClick={() => setCurrentProject(null)}>
                 プロジェクト管理
               </button>
@@ -663,11 +663,20 @@ function App() {
 
         {cells.map((cell, index) => {
           const isActive = cell.id === activeCellId
+          const hasRun = cell.output !== 'Run a cell to see the result here.' || Boolean(cell.error)
+          const cellStatus: 'idle' | 'running' | 'success' | 'error' = cell.isRunning
+            ? 'running'
+            : cell.error
+              ? 'error'
+              : hasRun
+                ? 'success'
+                : 'idle'
 
           return (
             <section
               key={cell.id}
               data-index={index}
+              data-status={cellStatus}
               className={`cell-card${isActive ? ' active' : ''}${draggingId === cell.id ? ' dragging' : ''}`}
               style={{ transform: `translateX(${swipeOffsets[cell.id] ?? 0}px)` }}
               draggable={!isMobile}
@@ -704,6 +713,8 @@ function App() {
                         backend: cell.backend === 'local' ? 'wolframalpha' : 'local',
                       })
                     }
+                    aria-pressed={cell.backend === 'local'}
+                    title={`Switch to ${cell.backend === 'local' ? 'WolframAlpha' : 'Local CAS'}`}
                   >
                     {cell.backend === 'local' ? 'Local' : 'WolframAlpha'}
                   </button>
@@ -711,13 +722,19 @@ function App() {
                 <div className="cell-actions-right">
                   {isMobile ? (
                     <div className="more-wrapper">
-                      <button className="ghost-button more-button" onClick={() => setMoreOpenId(moreOpenId === cell.id ? null : cell.id)}>⋮</button>
+                      <button
+                        className="ghost-button more-button"
+                        onClick={() => setMoreOpenId(moreOpenId === cell.id ? null : cell.id)}
+                        aria-label="More cell actions"
+                        aria-haspopup="true"
+                        aria-expanded={moreOpenId === cell.id}
+                      >⋮</button>
                       {moreOpenId === cell.id ? (
-                        <div className="more-menu">
-                          <button onClick={() => { duplicateCell(index); setMoreOpenId(null)}}>Duplicate</button>
-                          <button onClick={() => { deleteCell(index); setMoreOpenId(null)}}>Delete</button>
-                          <button onClick={() => { index > 0 && moveCell(index, index - 1); setMoreOpenId(null)}}>Up</button>
-                          <button onClick={() => { index < cells.length - 1 && moveCell(index, index + 1); setMoreOpenId(null)}}>Down</button>
+                        <div className="more-menu" role="menu" onKeyDown={(e) => { if (e.key === 'Escape') setMoreOpenId(null) }}>
+                          <button role="menuitem" onClick={() => { duplicateCell(index); setMoreOpenId(null)}}>Duplicate</button>
+                          <button role="menuitem" onClick={() => { deleteCell(index); setMoreOpenId(null)}}>Delete</button>
+                          <button role="menuitem" onClick={() => { index > 0 && moveCell(index, index - 1); setMoreOpenId(null)}}>Up</button>
+                          <button role="menuitem" onClick={() => { index < cells.length - 1 && moveCell(index, index + 1); setMoreOpenId(null)}}>Down</button>
                         </div>
                       ) : null}
                       <button type="button" className="run-button" onClick={() => void runCell(cell.id)}>
@@ -770,7 +787,22 @@ function App() {
                 )}
                 {cell.error ? <p className="error-text">{cell.error}</p> : null}
               </div>
-              <div className="cell-addbar" onClick={() => addCellBelowAt(index)} title="Add cell below">＋</div>
+              <button
+                type="button"
+                className="cell-addbar"
+                onClick={() => addCellBelowAt(index)}
+                aria-label="Add cell below"
+                title="Add cell below"
+              >＋</button>
+              <span className="visually-hidden" aria-live="polite">
+                {cellStatus === 'running'
+                  ? `Cell ${index + 1} is running`
+                  : cellStatus === 'error'
+                    ? `Cell ${index + 1} finished with an error`
+                    : cellStatus === 'success'
+                      ? `Cell ${index + 1} finished successfully`
+                      : ''}
+              </span>
             </section>
           )
         })}
@@ -780,7 +812,7 @@ function App() {
         {selectedImage ? (
           <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedImage(null)}>
             <div className="image-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="image-modal-close" onClick={() => setSelectedImage(null)}>×</button>
+              <button className="image-modal-close" onClick={() => setSelectedImage(null)} aria-label="Close image">×</button>
               <img src={selectedImage.src} alt={selectedImage.alt} />
               <div className="image-modal-caption">{selectedImage.title}</div>
             </div>
